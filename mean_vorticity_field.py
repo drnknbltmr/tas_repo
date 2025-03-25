@@ -17,7 +17,7 @@ u_avg, v_avg = tas.frame_process(u_data, v_data,-1)
 tas.heat_maps(case, u_avg, tas.mean_vorticity(u_data, v_data,dx,dy), foil_extent)
 tas.send_plot('meanvorticity')
 
-# print(mean_vorticity_wrt_timeframe(u_data, v_data, dx, dy))
+print(mean_vorticity_wrt_timeframe(u_data, v_data, dx, dy))
 
 
 
