@@ -8,14 +8,18 @@ import tas_functions as tas
 case = tas.prompt_case()
 u_data, v_data, foil_extent = tas.read_npz(case,'data_files/dewarped_data.npz')
 u_data, v_data = tas.frame_process(u_data, v_data,-1)
-
+print(foil_extent)
 u = u_data
+
+#print("max x =", foil_extent[1])
 
 print("u_data_shape =", u_data.shape)
 print("u_1_1 =", u_data[1][1])
-print("col_1", u[:,1]) #100 values
+#print("col_1", u[:,1]) #100 values
 
-pixel_size=0.2/505
+pixel_size=(foil_extent[1])/400
+x_list = np.linspace(0, foil_extent[1], 400)
+
 
 #read data
 
@@ -35,9 +39,12 @@ def displacement_thickness(u):
     for i in range (u.shape[1]):
         U_inf = np.max(u[:, i]) #takes maximum value from the column i in matrix u
         f=1-u[:,i]/U_inf
-        delta_1 = np.sum(f) * pixel_size #n_y=505 pixels #h_image = image height
+        delta_1.append(np.sum(f) * pixel_size) #n_x = 400 pixels #h_image = image height
     return delta_1
 
+#delta_1 = displacement_thickness(u_data)
+#print("displacement thickness =", delta_1) #works, gives 400 values, order of magnitude 0.00x - 0.0x
+#print(len(delta_1)) #400 values
 
 def momentum_thickness(u):
     u = np.nan_to_num(u)
@@ -45,8 +52,12 @@ def momentum_thickness(u):
     for i in range (u.shape[1]):
         U_inf=np.max(u[:,i])
         g=(u[:,i]/U_inf)*(1-u[:,i]/U_inf)
-        delta_2.append(np.sum(g)*pixel_size)  #n_y=505 pixels #h_image = image height
+        delta_2.append(np.sum(g)*pixel_size)  #n_x=400 pixels #h_image = image height
     return delta_2
+
+#delta_2 = momentum_thickness(u_data)
+#print("momentum_thickness =", delta_2) #prints 400 values, order of magnitude 0.00x
+#print("length momentum thickness =", len(momentum_thickness))
 
 def shape_factor(u):
     H = displacement_thickness(u)/momentum_thickness(u)
@@ -89,14 +100,15 @@ def plot_shape_factor(x,u):
     tas.send_plot('integral_plots')
 
 
-u=[[1,2,3],[2,3,4],[3,4,5]]
 
-print(displacement_thickness(u))
+
+
 """
 print(displacement_thickness(U).shape)
 print(displacement_thickness(U))
 print(x)
-plot_displacement_thickness(x,displacement_thickness(U))
-plot_momentum_thickness(x,momentum_thickness(U))
-plot_shape_factor(x,U)
 """
+
+plot_displacement_thickness(x_list,displacement_thickness(u_data))
+plot_momentum_thickness(x_list,momentum_thickness(u_data))
+plot_shape_factor(x_list,u_data)

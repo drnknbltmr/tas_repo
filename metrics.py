@@ -90,16 +90,3 @@ tas.send_plot('metrics')
 # x_vals = x_coords[indices[1]]  # Convert column indices to real X values
 # y_vals = y_coords[indices[0]]  # Convert row indices to real Y values
 #
-# # Plot the points
-# plt.figure(figsize=(10, 6))
-# plt.scatter(x_vals, y_vals, color='red', marker='x', label='Points with |dewarped_u| < 0.05')
-#
-# # Set labels and title
-# plt.xlabel('X Coordinate')
-# plt.ylabel('Y Coordinate')
-# plt.title('Locations where |dewarped_u| < 0.05')
-# plt.axis("equal")
-# plt.legend()
-# plt.grid()
-# tas.send_plot('metrics')
-

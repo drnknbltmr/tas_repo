@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import tas_functions as tas
 
 # Read data
-case = 5
+case = 4
 
 # Load the dewarped data
 u_data, v_data, foil_extent = tas.read_npz(case, 'data_files/dewarped_data.npz')
@@ -35,8 +35,8 @@ x_points = np.array(x_points)
 y_points = np.array(y_points)
 
 if case == 5:
-    x_points = x_points[2:]
-    y_points = y_points[2:]
+    x_points = x_points[3:]
+    y_points = y_points[3:]
 
 # Perform cubic regression
 coefficients = np.polyfit(x_points, y_points, 3)  # Fit a cubic polynomial
@@ -45,6 +45,42 @@ polynomial = np.poly1d(coefficients)  # Create a polynomial function
 # Generate x values for plotting the polynomial, limited to the range of x_points
 x_fit = np.linspace(min(x_points), max(x_points), 500)  # Smooth curve with 500 points
 y_fit = polynomial(x_fit)  # Evaluate the polynomial at x_fit
+
+
+# For a cubic polynomial, we need to find critical points by taking derivative
+derivative = np.polyder(polynomial)  # Get the derivative of the polynomial
+critical_points = np.roots(derivative)  # Find where derivative = 0
+
+# Filter critical points that are within our x-range and real numbers
+valid_critical_points = []
+for root in critical_points:
+    if np.isreal(root) and min(x_points) <= root <= max(x_points):
+        valid_critical_points.append(np.real(root))
+
+# Evaluate the polynomial at critical points to find maximum
+if valid_critical_points:
+    y_values = polynomial(valid_critical_points)
+    max_index = np.argmax(y_values)
+    highest_x = valid_critical_points[max_index]
+    highest_y = y_values[max_index]
+    print(f"Highest point (vertex): x = {highest_x:.4f}, y = {highest_y:.4f}")
+else:
+    print("No valid critical points found within the x-range")
+
+# Calculate the area under the curve between min and max x-points
+# Using numerical integration (trapezoidal rule)
+x_area = np.linspace(min(x_points), max(x_points), 1000)
+y_area = polynomial(x_area)
+area = np.trapz(y_area, x_area)
+print(f"Area under the curve: {area:.4f}")
+
+# Find intersection points with x-axis (roots of the polynomial)
+roots = np.roots(polynomial)
+real_roots = [np.real(root) for root in roots if np.isreal(root) and min(x_points) <= np.real(root) <= max(x_points)]
+print("Intersection points with x-axis:")
+for i, root in enumerate(real_roots):
+    print(f"  Root {i+1}: x = {root:.4f}")
+
 
 # Plotting the heatmap and overlaying the regression line
 plt.figure(figsize=(20, 12))
@@ -60,7 +96,10 @@ plt.imshow(
 
 # Overlay the cubic regression line and scatter points
 plt.plot(x_fit, y_fit, c='yellow', linewidth=2, label='Cubic Regression')  # Black regression line
-plt.scatter(x_points, y_points, s=4, c='black', label='Data Points')       # Black scatter points
+# plt.scatter(x_points, y_points, s=4, c='black', label='Data Points')       # Black scatter points
+
+plt.fill_between(x_fit, y_fit, y2=min(y_coords), where=(x_fit >= min(x_points)) & (x_fit <= max(x_points)),
+                 color='pink', alpha=0.5, label='Area under curve')
 
 # Add labels, title, and legend
 plt.xlabel('x')
@@ -71,4 +110,4 @@ plt.grid(False)  # Turn off grid to avoid clutter
 
 
 # Show the plot (optional)
-plt.show()
+tas.send_plot('metrics')
