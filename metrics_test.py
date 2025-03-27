@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import tas_functions as tas
 
 # Read data
-case = 4
+case = 1
 
 # Load the dewarped data
 u_data, v_data, foil_extent = tas.read_npz(case, 'data_files/dewarped_data.npz')
@@ -26,7 +26,8 @@ y_points = []
 for j in range(nx):
     # Iterate from top to bottom (starting at highest y)
     for i in range(ny-1, -1, -1):
-        if u_data[i, j] < 0:
+        if u_data[i, j] <= 0:
+
             x_points.append(x_coords[j])
             y_points.append(y_coords[i])
             break  # Stop after finding the first occurrence
@@ -72,7 +73,7 @@ else:
 x_area = np.linspace(min(x_points), max(x_points), 1000)
 y_area = polynomial(x_area)
 area = np.trapz(y_area, x_area)
-print(f"Area under the curve: {area:.4f}")
+print(f"Area under the curve: {area:.8f}")
 
 # Find intersection points with x-axis (roots of the polynomial)
 roots = np.roots(polynomial)
@@ -95,11 +96,11 @@ plt.imshow(
 )
 
 # Overlay the cubic regression line and scatter points
-plt.plot(x_fit, y_fit, c='yellow', linewidth=2, label='Cubic Regression')  # Black regression line
-# plt.scatter(x_points, y_points, s=4, c='black', label='Data Points')       # Black scatter points
+plt.plot(x_fit, y_fit, c='black', linewidth=2, label='Cubic Regression')  # Black regression line
+plt.scatter(x_points, y_points, s=4, c='red', label='Data Points')       # Black scatter points
 
-plt.fill_between(x_fit, y_fit, y2=min(y_coords), where=(x_fit >= min(x_points)) & (x_fit <= max(x_points)),
-                 color='pink', alpha=0.5, label='Area under curve')
+# plt.fill_between(x_fit, y_fit, y2=min(y_coords), where=(x_fit >= min(x_points)) & (x_fit <= max(x_points)),
+#                  color='purple', alpha=0, label='Area under curve')
 
 # Add labels, title, and legend
 plt.xlabel('x')
@@ -110,4 +111,5 @@ plt.grid(False)  # Turn off grid to avoid clutter
 
 
 # Show the plot (optional)
-tas.send_plot('metrics')
+# tas.send_plot('metrics')
+plt.show()

@@ -21,20 +21,36 @@ dy = (y_max - y_min) / (Ny - 1)
 
 psi = np.zeros_like(u_data)
 
-x_coords = np.linspace(foil_extent[0], foil_extent[1], Nx)
-y_coords = np.linspace(foil_extent[2], foil_extent[3], Ny)
+x_coords = np.linspace(x_min, x_max, Nx)
+y_coords = np.linspace(y_min, y_max, Ny)
 
-for j in range(1, Ny):
-    psi[j, 0] = psi[j-1, 0] + u_data[j-1, 0]*dy
+x_points = []
+y_points = []
 
-# (b) Across each row
-for j in range(Ny):
-    for i in range(1, Nx):
-        psi[j, i] = psi[j, i-1] - v_data[j, i-1]*dx + u_data[j, i-1]*dy
+dv_dx = np.gradient(v_data, dx, axis=1)
+du_dy = np.gradient(u_data, dy, axis=0)
+stream_matrix = du_dy - dv_dx
 
-        if -0.1 < psi[j, i] < 0.1:
-            x_points.append(x_coords[j])
-            y_points.append(y_coords[i])
+# (a) Integrate vertically first column
+for j in range(Ny-1):
+    psi[j, 0] = psi[j, 0] + u_data[j + 1, 0] * dy
+
+#integrate horizontally first row
+for i in range(Nx-1):
+    psi[0, i] = psi[0, i] - v_data[0, i + 1] * dx
+
+# (b) Integrate horizontally across rows
+for j in range(Ny-1):
+    for i in range(Nx-1):
+        psi[j, i] = psi[j, i] - v_data[j, i +1] * dx + u_data[j +1, i] * dy
+
+        # Detect separation points (psi <= 0)
+        if np.abs(psi[j, i]) < 0.000000005:
+            x_points.append(x_coords[i])
+            y_points.append(y_coords[j])
+
+x_points = np.array(x_points)
+y_points = np.array(y_points)
 
 
 # # 4) Identify LSB region by psi < 0 (or whichever condition suits your flow)
@@ -44,8 +60,6 @@ for j in range(Ny):
 # # x_data_lsb = np.where(lsb_mask, x_data, np.nan)
 # # y_data_lsb = np.where(lsb_mask, y_data, np.nan)
 
-x_points = np.array(x_points)
-y_points = np.array(y_points)
 
 # Perform cubic regression
 coefficients = np.polyfit(x_points, y_points, 3)  # Fit a cubic polynomial
@@ -55,10 +69,20 @@ polynomial = np.poly1d(coefficients)  # Create a polynomial function
 x_fit = np.linspace(min(x_points), max(x_points), 500)  # Smooth curve with 500 points
 y_fit = polynomial(x_fit)  # Evaluate the polynomial at x_fit
 
+
 # Plotting the regressed polynomial
 plt.figure(figsize=(20, 12))
+# Create the heatmap of u_data
+plt.imshow(
+    u_data,
+    extent=foil_extent,  # Set the extent to match the foil dimensions
+    origin='lower',      # Ensure the origin is at the bottom-left
+    cmap='jet',      # Use a colormap (you can change this to any other colormap)
+    aspect='equal'        # Automatically adjust the aspect ratio
+)
+
 plt.plot(x_fit, y_fit, c='blue', label='Cubic Regression')
-# plt.scatter(x_points, y_points, s=10, c='red', label='Data Points')  # Optional: Show scatter points
+plt.scatter(x_points, y_points, s=10, c='red', label='Data Points')  # Optional: Show scatter points
 plt.xlabel('x')
 plt.ylabel('y')
 plt.title('Cubic Regression of Points Where Velocity First Drops Below Zero')

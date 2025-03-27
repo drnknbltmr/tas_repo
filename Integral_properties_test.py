@@ -60,37 +60,45 @@ def boundary_layer_thickness(x,U_inf=5.47):
 #parameters over a frame
 #the outputs are vectors that represent these values along the chord
 #U_e is the free stream velocity in x direction
-def displacement_thickness(u, U_e):
+def displacement_thickness(u, U_e, i_bl):
     u=np.nan_to_num(u)
     delta_1=[]
-    #U_inf = U_e
+    U_inf = U_e
     for i in range (u.shape[1]):
-        U_inf = np.max(u[:, i]) #takes maximum value from the column i in matrix u
+        #U_inf = np.max(u[:, i]) #takes maximum value from the column i in matrix u
         f=1-u[:,i]/U_inf
-        delta_1.append(np.sum(f) * pixel_size) #n_x = 400 pixels #h_image = image height
+        delta_1.append(np.sum(f[:i_bl[i]]) * pixel_size) #n_x = 400 pixels #h_image = image height
     return delta_1
 
 #delta_1 = displacement_thickness(u_data)
 #print("displacement thickness =", delta_1) #works, gives 400 values, order of magnitude 0.00x - 0.0x
 #print(len(delta_1)) #400 values
 
-def momentum_thickness(u, U_e):
+def momentum_thickness(u, U_e, i_bl):
     u = np.nan_to_num(u)
-    #U_inf = U_e
+    U_inf = U_e
     delta_2=[]
     for i in range (u.shape[1]):
-        U_inf=np.max(u[:,i])
+        #U_inf=np.max(u[:,i])
         g=(u[:,i]/U_inf)*(1-u[:,i]/U_inf)
-        delta_2.append(np.sum(g)*pixel_size)  #n_x=400 pixels #h_image = image height
+        delta_2.append(np.sum(g[:i_bl[i]])*pixel_size)  #n_x=400 pixels #h_image = image height
     return delta_2
 
 #delta_2 = momentum_thickness(u_data)
 #print("momentum_thickness =", delta_2) #prints 400 values, order of magnitude 0.00x
 #print("length momentum thickness =", len(momentum_thickness))
 
-def shape_factor(u, U_e):
+
+#okay this was going wrong, we want it to stop integrating after the boundary layer edge is reached, that is now implemented for the other calculations,
+#but it doesn't work because now momentum_thickness can become 0 so you get a devision by 0
+#probably have to do this function below again
+def shape_factor(u, U_e, i_bl):
     #H = displacement_thickness(u)/momentum_thickness(u) #this doesn't work, so we try with the line below
-    H = [displacement_thickness(u, U_e)[i] / momentum_thickness(u, U_e)[i] for i in range(len(displacement_thickness(u, U_e)))]
+    H = []
+    for i in range(len(displacement_thickness(u, U_e, i_bl))):
+        #if momentum_thickness(u, U_e, i_bl)[i] != 0:
+        H = H.append(displacement_thickness(u, U_e, i_bl)[i] / momentum_thickness(u, U_e, i_bl)[i]) if momentum_thickness(u, U_e, i_bl)[i] >0 else None
+    #H = [displacement_thickness(u, U_e, i_bl)[i] / momentum_thickness(u, U_e, i_bl)[i] for i in range(len(displacement_thickness(u, U_e, i_bl)))]
     return H
 
 def plot_displacement_thickness(x,delta_1):
@@ -150,7 +158,8 @@ print(displacement_thickness(U))
 print(x)
 """
 
-plot_displacement_thickness(x_list,displacement_thickness(u_data, 5.47))
-plot_momentum_thickness(x_list,momentum_thickness(u_data, 5.47))
-plot_shape_factor(x_list,shape_factor(u_data, 5.47))
+
+plot_displacement_thickness(x_list,displacement_thickness(u_data, 5.47, boundary_layer_indeces(x_list, 5.47, u_data, y_max)[0]))
+plot_momentum_thickness(x_list,momentum_thickness(u_data, 5.47, boundary_layer_indeces(x_list, 5.47, u_data, y_max)[0]))
+plot_shape_factor(x_list,shape_factor(u_data, 5.47, boundary_layer_indeces(x_list, 5.47, u_data, y_max)[0]))
 plot_bl_thickness(x_list,boundary_layer_indeces(x_list, 5.47, u_data, y_max))
