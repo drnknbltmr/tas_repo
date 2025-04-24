@@ -59,7 +59,7 @@ def get_psd(u_prime, v_prime):
     return psd
 
 psd = get_psd(u_prime, v_prime)
-np.
+np.nan_to_num(psd, nan=0.0)
 
 # Pick a frequency index (e.g., 30)
 freq_index = 1
