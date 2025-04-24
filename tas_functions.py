@@ -51,6 +51,13 @@ def read_npz(case, file_directory):
     v_data = data[f'case_{case}_dewarped_v']
     return u_data, v_data, foil_extent
 
+def read_npz_loop(case, file_directory):
+    data = np.load(file_directory)
+    foil_extent = data['dewarped_foil']
+    u_data = data[f'case_{case}_dewarped_u']
+    v_data = data[f'case_{case}_dewarped_v']
+    return u_data, v_data, foil_extent
+
 def log_time(start, label):
     elapsed = time.time() - start
     print(f"{label}: {elapsed:.4f} seconds")
@@ -76,6 +83,46 @@ def heat_maps(case, u_data, v_data, foil_extent):
     cbar_v = fig.colorbar(im_v, ax=ax2)
     cbar_v.set_label('v')
     plt.tight_layout()
+
+def heat_maps_png(case, u_data, v_data, foil_extent,dpi):
+    # Determine global min and max
+    combined = np.ma.masked_invalid(np.concatenate([u_data.flatten(), v_data.flatten()]))
+    vmin = combined.min()
+    vmax = combined.max()
+
+    # === U Heatmap ===
+    fig_u, ax_u = plt.subplots(figsize=(12, 7))
+    cmap_u = plt.cm.jet.copy()
+    cmap_u.set_bad('white')
+
+    im_u = ax_u.imshow(u_data, extent=foil_extent, aspect='equal', origin='lower',
+                       cmap=cmap_u, vmin=vmin, vmax=vmax)
+    ax_u.set_title(f'Case {case} - Tangential Velocity (u)')
+    ax_u.set_xlabel('Arc Length (m)')
+    ax_u.set_ylabel('Distance from Airfoil (m)')
+    cbar_u = fig_u.colorbar(im_u, ax=ax_u, shrink=0.4)
+    cbar_u.set_label('u (m/s)')
+
+    plt.tight_layout()
+    fig_u.savefig(f'dewarp_u_case_{case}.png', dpi=dpi,bbox_inches='tight')
+    plt.close(fig_u)
+
+    # === V Heatmap ===
+    fig_v, ax_v = plt.subplots(figsize=(12, 7))
+    cmap_v = plt.cm.jet.copy()
+    cmap_v.set_bad('white')
+
+    im_v = ax_v.imshow(v_data, extent=foil_extent, aspect='equal', origin='lower',
+                       cmap=cmap_v, vmin=vmin, vmax=vmax)
+    ax_v.set_title(f'Case {case} - Normal Velocity (v)')
+    ax_v.set_xlabel('Arc Length (m)')
+    ax_v.set_ylabel('Distance from Airfoil (m)')
+    cbar_v = fig_v.colorbar(im_v, ax=ax_v, shrink=0.4)
+    cbar_v.set_label('v (m/s)')
+
+    plt.tight_layout()
+    fig_v.savefig(f'dewarp_v_case_{case}.png', dpi=dpi, bbox_inches='tight')
+    plt.close(fig_v)
 
 
 def mean_vorticity(u_data, v_data, dx, dy):

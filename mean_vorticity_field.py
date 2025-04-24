@@ -3,7 +3,12 @@ it is assumed that U and V are known matrices"""
 import numpy as np
 import matplotlib.pyplot as plt
 import tas_functions as tas
-case = 4
+
+
+case = 5
+
+
+
 u_data, v_data, foil_extent = tas.read_npz(case,'data_files/dewarped_data.npz')
 
 dx = 0.0004
@@ -17,7 +22,7 @@ u_avg, v_avg = tas.frame_process(u_data, v_data,-1)
 tas.heat_maps(case, u_avg, tas.mean_vorticity(u_data, v_data,dx,dy), foil_extent)
 tas.send_plot('meanvorticity')
 
-print(mean_vorticity_wrt_timeframe(u_data, v_data, dx, dy))
+print(tas.mean_vorticity(u_data, v_data, dx, dy))
 
 
 

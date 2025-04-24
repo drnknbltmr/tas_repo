@@ -45,7 +45,7 @@ for j in range(Ny-1):
         psi[j, i] = psi[j, i] - v_data[j, i +1] * dx + u_data[j +1, i] * dy
 
         # Detect separation points (psi <= 0)
-        if np.abs(psi[j, i]) < 0.000000005:
+        if np.abs(psi[j, i]) < 0.000005:
             x_points.append(x_coords[i])
             y_points.append(y_coords[j])
 
