@@ -143,3 +143,11 @@ def mean_vorticity(u_data, v_data, dx, dy):
 
     mean_vorticity_in_time = np.nanmean(vorticity_tensor, axis=0)
     return mean_vorticity_in_time
+
+def outlier_filter(data):
+    mean = np.nanmean(data)
+    std = np.nanstd(data)
+    print('mean:', mean, 'std:', std)
+    mask = np.abs(data - mean) > 5 * std
+    data[mask] = np.nan
+    return data

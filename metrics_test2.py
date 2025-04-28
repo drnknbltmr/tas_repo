@@ -1,58 +1,43 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import tas_functions as tas
-from matplotlib.colors import Normalize
 
 
-
-def plotwithin(u_data, foil_extent, x_fit, y_fit, casenumber):
+def plotwithin(u_data, foil_extent, x_fit, y_fit):
     # Plotting the heatmap and overlaying the regression line
-    norm = Normalize(vmin=-3, vmax=8)
-
-    fig, ax = plt.subplots(nrows=1, ncols=5, figsize=(20, 12),sharey=True,
-    constrained_layout=True)
-    titles = [f'Case {i}' for i in range(1, 6)]
+    fig, ax = plt.subplots(figsize=(20, 12))
 
     # Create the heatmap of u_data
-    for ax, u_data, x_fit, y_fit, title in zip(axes, u_all, x_fit_all, y_fit_all, titles):
-        im = ax.imshow(
-            u_data,
-            extent=foil_extent,  # Set the extent to match the foil dimensions
-            origin='lower',      # Ensure the origin is at the bottom-left
-            cmap='jet',      # Use a colormap (you can change this to any other colormap)
-            aspect='equal',
-            norm=norm # Automatically adjust the aspect ratio
-        )
+    im = ax.imshow(
+        u_data,
+        extent=foil_extent,  # Set the extent to match the foil dimensions
+        origin='lower',      # Ensure the origin is at the bottom-left
+        cmap='jet',      # Use a colormap (you can change this to any other colormap)
+        aspect='equal'        # Automatically adjust the aspect ratio
+    )
 
-        ax.plot(x_fit, y_fit, c='black', linewidth=4,
-                label='Approximation Bubble Outline')
-
-        ax.set_title(title)
-        ax.grid(False)
-        ax.legend(fontsize=7, loc='upper right')
 
     cbar = fig.colorbar(
         im,  # link it to the heat-map you just drew
         ax=ax,
         orientation='vertical',
         fraction=0.046,  # how wide the bar is relative to the Axes
-        pad=0.04, # gap between bar and Axes
-        shrink=0.6
+        pad=0.04  # gap between bar and Axes
     )
 
     cbar.set_label('Velocity (m/s)')  # change text to whatever quantity you’re plotting
 
-    # # Overlay the cubic regression line and scatter points
-    # plt.plot(x_fit, y_fit, c='black', linewidth=4, label='Approximation Bubble Outline')  # Black regression line
-    # # plt.scatter(x_points, y_points, s=4, c='red', label='Data Points')       # Black scatter points
-    #
-    # # plt.fill_between(x_fit, y_fit, y2=min(y_coords), where=(x_fit >= min(x_points)) & (x_fit <= max(x_points)),
-    # #                  color='purple', alpha=0, label='Area under curve')
+    # Overlay the cubic regression line and scatter points
+    plt.plot(x_fit, y_fit, c='black', linewidth=2, label='Cubic Regression')  # Black regression line
+    # plt.scatter(x_points, y_points, s=4, c='red', label='Data Points')       # Black scatter points
+
+    # plt.fill_between(x_fit, y_fit, y2=min(y_coords), where=(x_fit >= min(x_points)) & (x_fit <= max(x_points)),
+    #                  color='purple', alpha=0, label='Area under curve')
 
     # Add labels, title, and legend
-    plt.xlabel('x [m]')
-    plt.ylabel('y [m]')
-    plt.title('Cubic Regression of LSB for case ' + str(casenumber))
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.title('Cubic Regression Overlaid on Heatmap of u_data')
     plt.legend()
     plt.grid(False)  # Turn off grid to avoid clutter
 
@@ -80,8 +65,7 @@ def plotoverview(storedcoefficients):
     tas.send_plot('metrics')
 
 storedcoefficients = []
-min_u_data_arr =[]
-max_u_data_arr =[]
+normalized = True
 
 for casenumber in range(1,6):
     # Read data
@@ -89,7 +73,6 @@ for casenumber in range(1,6):
     # Load the dewarped data
     if casenumber == 1:
         u_data, v_data, foil_extent = tas.read_npz(casenumber, 'data_files/dewarped_data.npz')
-
     else:
         u_data, v_data, foil_extent = tas.read_npz_loop(casenumber, 'data_files/dewarped_data.npz')
 
@@ -121,7 +104,14 @@ for casenumber in range(1,6):
     x_points = np.array(x_points)
     y_points = np.array(y_points)
 
-    if casenumber    == 5:
+    #if normalized is true it will devide all LSB boundary point by the chord and then add the initial arc length for x=0
+    if normalized:
+        x_points = x_points / 0.2
+        x_points = x_points + 0.005196
+        y_points = y_points / 0.2
+
+
+    if casenumber == 5:
         x_points = x_points[3:]
         y_points = y_points[3:]
 
@@ -173,7 +163,7 @@ for casenumber in range(1,6):
     for i, root in enumerate(real_roots):
         print(f"  Root {i+1}: x = {root:.4f}")
 
-plotwithin(u_data, foil_extent, x_fit, y_fit, casenumber)
+    #plotwithin(u_data, foil_extent, x_fit, y_fit)
 
 
 

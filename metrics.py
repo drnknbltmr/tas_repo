@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import tas_functions as tas
 
 # Read data
-case = 3
+case = 2
 
 # 1) load data
 u_data, v_data, foil_extent = tas.read_npz(case,'data_files/dewarped_data.npz')
@@ -43,15 +43,32 @@ for i in range(Nx-1):
 for j in range(Ny-1):
     for i in range(Nx-1):
         psi[j, i] = psi[j, i] - v_data[j, i +1] * dx + u_data[j +1, i] * dy
+        psi[j, i] = np.abs(psi[j, i])
 
-        # Detect separation points (psi <= 0)
-        if np.abs(psi[j, i]) < 0.000005:
-            x_points.append(x_coords[i])
-            y_points.append(y_coords[j])
+        # # Detect separation points (psi <= 0)
+        # if psi[j, i] < 0.000005:
+        #     x_points.append(x_coords[i])
+        #     y_points.append(y_coords[j])
+
+for i in range(Nx - 1):  # Iterate over each column (x-coordinate)
+    # Extract the column, considering only processed rows (0 to Ny-2)
+    column = psi[0:Ny - 1, i]
+
+    # Skip if all values are zero (unprocessed or invalid)
+    if np.all(column == 0):
+        continue
+
+    # Find the minimum non-zero psi in this column
+    non_zero_mask = (column > 0)  # Exclude zeros
+    if np.any(non_zero_mask):
+        j_min = np.argmin(column[non_zero_mask])  # Find row with min psi (excluding zeros)
+        y_idx = np.where(non_zero_mask)[0][j_min]  # Get the actual row index
+        x_points.append(x_coords[i])
+        y_points.append(y_coords[y_idx])
+
 
 x_points = np.array(x_points)
 y_points = np.array(y_points)
-
 
 # # 4) Identify LSB region by psi < 0 (or whichever condition suits your flow)
 # lsb_mask = (abs(psi) < 0.1)
