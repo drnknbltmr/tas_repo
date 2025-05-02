@@ -3,64 +3,6 @@ import matplotlib.pyplot as plt
 import tas_functions as tas
 from matplotlib.colors import Normalize
 
-
-
-def plotwithin(u_data, foil_extent, x_fit, y_fit, casenumber):
-    # Plotting the heatmap and overlaying the regression line
-    norm = Normalize(vmin=-3, vmax=8)
-
-    fig, ax = plt.subplots(nrows=1, ncols=5, figsize=(20, 12),sharey=True,
-    constrained_layout=True)
-    titles = [f'Case {i}' for i in range(1, 6)]
-
-    # Create the heatmap of u_data
-    for ax, u_data, x_fit, y_fit, title in zip(axes, u_all, x_fit_all, y_fit_all, titles):
-        im = ax.imshow(
-            u_data,
-            extent=foil_extent,  # Set the extent to match the foil dimensions
-            origin='lower',      # Ensure the origin is at the bottom-left
-            cmap='jet',      # Use a colormap (you can change this to any other colormap)
-            aspect='equal',
-            norm=norm # Automatically adjust the aspect ratio
-        )
-
-        ax.plot(x_fit, y_fit, c='black', linewidth=4,
-                label='Approximation Bubble Outline')
-
-        ax.set_title(title)
-        ax.grid(False)
-        ax.legend(fontsize=7, loc='upper right')
-
-    cbar = fig.colorbar(
-        im,  # link it to the heat-map you just drew
-        ax=ax,
-        orientation='vertical',
-        fraction=0.046,  # how wide the bar is relative to the Axes
-        pad=0.04, # gap between bar and Axes
-        shrink=0.6
-    )
-
-    cbar.set_label('Velocity (m/s)')  # change text to whatever quantity you’re plotting
-
-    # # Overlay the cubic regression line and scatter points
-    # plt.plot(x_fit, y_fit, c='black', linewidth=4, label='Approximation Bubble Outline')  # Black regression line
-    # # plt.scatter(x_points, y_points, s=4, c='red', label='Data Points')       # Black scatter points
-    #
-    # # plt.fill_between(x_fit, y_fit, y2=min(y_coords), where=(x_fit >= min(x_points)) & (x_fit <= max(x_points)),
-    # #                  color='purple', alpha=0, label='Area under curve')
-
-    # Add labels, title, and legend
-    plt.xlabel('x [m]')
-    plt.ylabel('y [m]')
-    plt.title('Cubic Regression of LSB for case ' + str(casenumber))
-    plt.legend()
-    plt.grid(False)  # Turn off grid to avoid clutter
-
-
-    # Show the plot (optional)
-    tas.send_plot('metrics')
-    # plt.show()
-
 def plotoverview(storedcoefficients):
     # Create a range of x values (adjust as needed)
     x = np.linspace(0, 0.1, 400)  # 400 points from -10 to 10
@@ -83,8 +25,122 @@ storedcoefficients = []
 min_u_data_arr =[]
 max_u_data_arr =[]
 
-for casenumber in range(1,6):
-    # Read data
+def main(casenumber):
+    print(casenumber)
+    # Load the dewarped data
+    if casenumber == 1:
+        u_data, v_data, foil_extent = tas.read_npz(casenumber, 'data_files/dewarped_data.npz')
+
+    else:
+        u_data, v_data, foil_extent = tas.read_npz_loop(casenumber, 'data_files/dewarped_data.npz')
+    u_data, v_data = tas.frame_process(u_data, v_data, -1)
+
+    # 2) Extract domain extents
+    x_min, x_max = foil_extent[0], foil_extent[1]
+    y_min, y_max = foil_extent[2], foil_extent[3]
+
+    # 3) Compute a simple streamfunction
+    Ny, Nx = u_data.shape
+    dx = (x_max - x_min) / (Nx - 1)
+    dy = (y_max - y_min) / (Ny - 1)
+
+    psi = np.zeros_like(u_data)
+
+    x_coords = np.linspace(x_min, x_max, Nx)
+    y_coords = np.linspace(y_min, y_max, Ny)
+
+    x_points = []
+    y_points = []
+
+    dv_dx = np.gradient(v_data, dx, axis=1)
+    du_dy = np.gradient(u_data, dy, axis=0)
+    stream_matrix = du_dy - dv_dx
+
+    # (a) Integrate vertically first column
+    for j in range(Ny - 1):
+        psi[j, 0] = psi[j, 0] + u_data[j + 1, 0] * dy
+
+    # integrate horizontally first row
+    for i in range(Nx - 1):
+        psi[0, i] = psi[0, i] - v_data[0, i + 1] * dx
+
+    # (b) Integrate horizontally across rows
+    for j in range(Ny - 1):
+        for i in range(Nx - 1):
+            psi[j, i] = psi[j, i] - v_data[j, i + 1] * dx + u_data[j + 1, i] * dy
+            psi[j, i] = np.abs(psi[j, i])
+
+            # # Detect separation points (psi <= 0)
+            # if psi[j, i] < 0.000005:
+            #     x_points.append(x_coords[i])
+            #     y_points.append(y_coords[j])
+    if casenumber == 5:
+        for i in range(150, Nx - 50):  # Iterate over each column (x-coordinate)
+            # Extract the column, considering only processed rows (0 to Ny-2)
+            column = psi[0:Ny - 1, i]
+
+            # Skip if all values are zero (unprocessed or invalid)
+            if np.all(column == 0):
+                continue
+
+            # Find the minimum non-zero psi in this column
+            non_zero_mask = (column > 0)  # Exclude zeros
+            if np.any(non_zero_mask):
+                j_min = np.argmin(column[non_zero_mask])  # Find row with min psi (excluding zeros)
+                y_idx = np.where(non_zero_mask)[0][j_min]  # Get the actual row index
+                if not np.isnan(u_data[y_idx - 4, i]):
+                    # j_min = np.argmin(column[non_zero_mask])  # Find row with min psi (excluding zeros)
+                    # y_idx = np.where(non_zero_mask)[0][j_min]  # Get the actual row index
+                    x_points.append(x_coords[i])
+                    y_points.append(y_coords[y_idx])
+    else:
+        for i in range(50, Nx - 50):  # Iterate over each column (x-coordinate)
+            # Extract the column, considering only processed rows (0 to Ny-2)
+            column = psi[0:Ny - 1, i]
+
+            # Skip if all values are zero (unprocessed or invalid)
+            if np.all(column == 0):
+                continue
+
+            # Find the minimum non-zero psi in this column
+            non_zero_mask = (column > 0)  # Exclude zeros
+            if np.any(non_zero_mask):
+                j_min = np.argmin(column[non_zero_mask])  # Find row with min psi (excluding zeros)
+                y_idx = np.where(non_zero_mask)[0][j_min]  # Get the actual row index
+                if not np.isnan(u_data[y_idx - 4, i]):
+                    # j_min = np.argmin(column[non_zero_mask])  # Find row with min psi (excluding zeros)
+                    # y_idx = np.where(non_zero_mask)[0][j_min]  # Get the actual row index
+                    x_points.append(x_coords[i])
+                    y_points.append(y_coords[y_idx])
+
+    x_points = np.array(x_points)
+    y_points = np.array(y_points)
+
+
+
+    # # 4) Identify LSB region by psi < 0 (or whichever condition suits your flow)
+    # lsb_mask = (abs(psi) < 0.1)
+    # u_data_lsb = np.where(lsb_mask, u_data, np.nan)
+    # v_data_lsb = np.where(lsb_mask, v_data, np.nan)
+    # # x_data_lsb = np.where(lsb_mask, x_data, np.nan)
+    # # y_data_lsb = np.where(lsb_mask, y_data, np.nan)
+
+    # Perform cubic regression
+    coefficients = np.polyfit(x_points, y_points, 5)  # Fit a cubic polynomial
+    polynomial = np.poly1d(coefficients)  # Create a polynomial function
+
+    # Generate x values for plotting the polynomial, limited to the range of x_points
+    x_fit = np.linspace(min(x_points), max(x_points), 500)  # Smooth curve with 500 points
+    y_fit = polynomial(x_fit)  # Evaluate the polynomial at x_fit
+
+
+    # allx_points.append(x_points)
+    # ally_points.append(y_points)
+    # allpolynomials.append(polynomial)
+
+    return u_data, x_fit, y_fit, foil_extent, x_points, y_points
+
+def getpolyline(casenumber):
     print(casenumber)
     # Load the dewarped data
     if casenumber == 1:
@@ -99,6 +155,8 @@ for casenumber in range(1,6):
 
     # Get the shape of the velocity data array
     ny, nx = u_data.shape
+
+    print(foil_extent)
 
     # Generate x and y coordinates based on the foil extent
     x_coords = np.linspace(foil_extent[0], foil_extent[1], nx)
@@ -173,10 +231,60 @@ for casenumber in range(1,6):
     for i, root in enumerate(real_roots):
         print(f"  Root {i+1}: x = {root:.4f}")
 
-plotwithin(u_data, foil_extent, x_fit, y_fit, casenumber)
+    return u_data, x_fit, y_fit, foil_extent
+
+def combinedfigure():
 
 
+# Plotting the heatmap and overlaying the regression line
+norm = Normalize(vmin=-3, vmax=8)
+casenumbers = [1,2,3,4,5]
+cmap = 'jet'
 
-print(storedcoefficients)
+fig, axes = plt.subplots(nrows=5, ncols=1, figsize=(16, 14),sharey=True,
+constrained_layout=True)
+titles = [f'LSB Boundary: Case {i}' for i in range(1, 6)]
+
+# Create the heatmap of u_data
+for ax, title, casenumber in zip(axes, titles, casenumbers):
+    u_data, x_fit, y_fit, foil_extent, x_points, y_points = main(casenumber)
+    im = ax.imshow(
+        u_data,
+        extent=foil_extent,  # Set the extent to match the foil dimensions
+        origin='lower',      # Ensure the origin is at the bottom-left
+        cmap='jet',      # Use a colormap (you can change this to any other colormap)
+        aspect='equal',
+        norm=norm # Automatically adjust the aspect ratio
+    )
+
+    ax.plot(x_fit, y_fit, c='black', linewidth=2,
+            label='Quintic Regression Data Points')
+    ax.scatter(x_points, y_points, s=10, c='red', label='Data Points')
+
+    ax.set_title(title)
+    plt.xlabel('x [m]')
+    plt.ylabel('y [m]')
+    ax.grid(False)
+    ax.legend(fontsize=9, loc='upper right')
+
+sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)  # empty mappable with the
+sm.set_array([])
+
+cbar = fig.colorbar(sm,
+    ax=axes,
+    orientation='vertical',
+    fraction=0.046,  # how wide the bar is relative to the Axes
+    pad=0.04, # gap between bar and Axes
+    shrink=0.6
+)
+
+cbar.set_label('Velocity (m/s)')  # change text to whatever quantity you’re plotting
+
+
+# Show the plot (optional)
+tas.send_plot('metrics')
+# plt.show()
+
+
 #plotoverview(storedcoefficients)
 
