@@ -140,7 +140,7 @@ def plot_bl_thickness(x,boundary_layer_indeces):
     plt.title("Boundary Layer Thickness vs. x-Location")
     plt.grid(True)
     plt.legend()
-    tas.send_plot('integral_plots')
+    tas.send_plot()
 
 
 
